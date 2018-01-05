@@ -1,81 +1,7 @@
 pragma solidity ^0.4.18;
 
-//Interfaces
-
-// https://github.com/ethereum/EIPs/issues/20
-interface ERC20 {
-    event Transfer(address indexed _from, address indexed _to, uint _value);
-    event Approval(address indexed _owner, address indexed _spender, uint _value);
-
-    function totalSupply() public constant returns (uint);
-    function balanceOf(address _owner) public constant returns (uint balance);
-    function transfer(address _to, uint _value) public returns (bool success);
-    function transferFrom(address _from, address _to, uint _value) public returns (bool success);
-    function approve(address _spender, uint _value) public returns (bool success);
-    function allowance(address _owner, address _spender) public constant returns (uint remaining);
-}
-
-
-//Contracts
-contract UnilotInvestors {
-    enum InvestorState {
-        ANONYMOUS,
-        REGISTERED,
-        APPROVED,
-        REFUNDED,
-        BANNED,
-        FROZEN
-    }
-
-    mapping (address => InvestorState) public investors;
-    address public administrator;
-
-    event InvestorAdded(address investor, InvestorState state);
-
-    modifier onlyAdministrator() {
-        require(msg.sender == administrator);
-        _;
-    }
-
-    function UnilotInvestors()
-        public
-    {
-        administrator = msg.sender;
-
-        investors[administrator] = InvestorState.APPROVED;
-    }
-
-    function addInvestor(address investor, InvestorState state)
-        public
-        onlyAdministrator
-    {
-        require(investor != administrator);
-        require(state != InvestorState.ANONYMOUS);
-        require(investors[investor] == InvestorState.ANONYMOUS);
-
-        investors[investor] = state;
-        InvestorAdded(investor, state);
-    }
-
-    function isAnonymous(address investor)
-        public
-        view
-        returns (bool)
-    {
-        return ( investors[investor] == InvestorState.ANONYMOUS );
-    }
-
-    function isCanInvest(address investor)
-        public
-        view
-        returns (bool)
-    {
-        InvestorState investorState = investors[investor];
-
-        return (investorState == InvestorState.REGISTERED
-                || investorState == InvestorState.APPROVED);
-    }
-}
+import "contracts/interfaces/ERC20.sol";
+import "contracts/interfaces/InvestorsPool.sol";
 
 contract UnilotToken is ERC20 {
     enum TokenState {
@@ -106,7 +32,7 @@ contract UnilotToken is ERC20 {
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping (address => uint256)) allowed;
 
-    UnilotInvestors _investorsPull;
+    InvestorsPool _investorsPool;
 
     // Functions with this modifier can only be executed by the owner
     modifier onlyAdministrator() {
@@ -115,7 +41,7 @@ contract UnilotToken is ERC20 {
     }
 
     modifier onlyRegisteredInvestors() {
-        require(_investorsPull.isCanInvest(msg.sender));
+        require(_investorsPool.isCanInvest(msg.sender));
         _;
     }
 
@@ -141,13 +67,13 @@ contract UnilotToken is ERC20 {
     }
 
     // Constructor
-    function UnilotToken(UnilotInvestors investorsPull)
+    function UnilotToken(InvestorsPool investorsPool)
         public
     {
         administrator = msg.sender;
         state = TokenState.PRE_ICO;
         balances[administrator] = _totalSupply;
-        _investorsPull = investorsPull;
+        _investorsPool = investorsPool;
     }
 
 
