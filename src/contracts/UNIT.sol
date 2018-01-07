@@ -4,27 +4,69 @@ import "contracts/interfaces/ERC20.sol";
 import "contracts/interfaces/InvestorsPool.sol";
 
 contract UnilotToken is ERC20 {
-    enum TokenState {
-        PRE_ICO,
-        ICO_PHASE_1,
-        ICO_PHASE_2,
-        PRODUCTION
+    struct TokenStage {
+        string name;
+        uint numCoinsStart;
+        uint coinsAvailable;
+        uint bonus;
+        uint startsAt;
+        uint endsAt;
     }
 
+    //Token symbol
     string public constant symbol = "UNIT";
-    string public constant name = "Unilot gaming platform token";
-    uint8 public constant decimals = 0;
-    uint256 public constant _totalSupply = 100000000; //100 million
-    uint256 public constant personalCap = 10000; //0.01%
+    //Token name
+    string public constant name = "Unilot token";
+    //It can be reeeealy small
+    uint8 public constant decimals = 18;
+    //500 mln tokens
+    uint256 public constant _totalSupply = 500 * (10**6) * (10**18);
 
-    //Token price in production stage. Price can change in future.
-    uint256 public constant price = 0.025 ether;
+    //Public investor can buy tokens for 30 ether at maximum
+    uint256 public constant singleInvestorCap = 30 ether; //30 ether
+
+    //Distribution units
+    uint public constant DST_ICO     = 62; //62%
+    uint public constant DST_RESERVE = 10; //10%
+    uint public constant DST_BOUNTY  = 3;  //3%
+    //Referral and Bonus Program
+    uint public constant DST_R_N_B_PROGRAM = 10; //10%
+    uint public constant DST_ADVISERS      = 5;  //5%
+    uint public constant DST_TEAM          = 10; //10%
+
+    //Referral Bonuses
+    uint public constant REFERRAL_BONUS_LEVEL1 = 5; //5%
+    uint public constant REFERRAL_BONUS_LEVEL2 = 4; //4%
+    uint public constant REFERRAL_BONUS_LEVEL3 = 3; //3%
+    uint public constant REFERRAL_BONUS_LEVEL4 = 2; //2%
+    uint public constant REFERRAL_BONUS_LEVEL5 = 1; //1%
+
+    //Token amount
+    //25 mln tokens
+    uint public constant TOKEN_AMOUNT_PRE_ICO = 25 * (10**6) * (10**18);
+     //5 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE1 = 5 * (10**6) * (10**18);
+    //5 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE2 = 5 * (10**6) * (10**18);
+    //5 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE3 = 5 * (10**6) * (10**18);
+    //5 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE4 = 5 * (10**6) * (10**18);
+    //265 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE2 = 265 * (10**6) * (10**18);
+
+    uint public constant BONUS_PRE_ICO = 40; //40%
+    uint public constant BONUS_ICO_STAGE1_PRE_SALE1 = 35; //35%
+    uint public constant BONUS_ICO_STAGE1_PRE_SALE2 = 30; //30%
+    uint public constant BONUS_ICO_STAGE1_PRE_SALE3 = 25; //25%
+    uint public constant BONUS_ICO_STAGE1_PRE_SALE4 = 20; //20%
+    uint public constant BONUS_ICO_STAGE2 = 0; //No bonus
+
+    //Token Price on Coin Offer
+    uint256 public constant price = 79 szabo; //0.000079 ETH
 
     // Owner of this contract
     address public administrator;
-
-    //Token state
-    TokenState public state;
 
     // Balances for each account
     mapping(address => uint256) balances;
@@ -32,50 +74,114 @@ contract UnilotToken is ERC20 {
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping (address => uint256)) allowed;
 
-    InvestorsPool _investorsPool;
+    uint256 internal coinsAvailable;
+
+    //All token stages. Total 6 stages
+    TokenStage[6] stages;
+
+    //Index of current stage in stage array
+    uint currentStage;
+
+    //Contract the implements interface of InvestorsPool
+    InvestorsPool internal investorsPool;
+
+    //Enables or disables debug mode. Debug mode is set only in constructor.
+    bool isDebug = false;
 
     // Functions with this modifier can only be executed by the owner
     modifier onlyAdministrator() {
+        require(msg.sender == administrator);
+        _;
+    }
+
+    modifier notAdministrator() {
         require(msg.sender != administrator);
         _;
     }
 
-    modifier onlyRegisteredInvestors() {
-        require(_investorsPool.isCanInvest(msg.sender));
+    modifier onlyDuringICO() {
+        require(currentStage < stages.length);
         _;
     }
 
-    function getStatePriceCoeficent()
-        public
-        pure
-        returns (uint8[3] memory)
-    {
-        return ( [ 10, 8, 5 ] );
-    }
-
-    function getCurrentPrice()
-        public
-        view
-        returns (uint currentPrice)
-    {
-        currentPrice = price;
-        uint8[3] memory statePriceCoeficent = getStatePriceCoeficent();
-
-        if ( uint(state) < statePriceCoeficent.length ) {
-            currentPrice = price / statePriceCoeficent[uint8(state)];
-        }
+    modifier onlyAfterICO(){
+        require(currentStage >= stages.length);
+        _;
     }
 
     // Constructor
-    function UnilotToken(InvestorsPool investorsPool)
+    function UnilotToken(InvestorsPool _investorsPool, bool _isDebug)
         public
     {
         administrator = msg.sender;
-        state = TokenState.PRE_ICO;
-        balances[administrator] = _totalSupply;
-        _investorsPool = investorsPool;
+        coinsAvailable = _totalSupply;
+        investorsPool = _investorsPool;
+        isDebug = _isDebug;
+
+        _setupStages();
     }
 
+    function _setupStages()
+        internal
+    {
+        //Presale stage
+        stages[0].name = 'Presale stage';
+        stages[0].coinsAvailable = TOKEN_AMOUNT_PRE_ICO;
+        stages[0].bonus = BONUS_PRE_ICO;
+
+        if (isDebug) {
+            stages[0].startsAt = now;
+            stages[0].endsAt = stages[0].startsAt + 10 seconds; //+10 seconds
+        } else {
+            stages[0].startsAt = 1515600000; //10th of January 2018 at 16:00UTC
+            stages[0].endsAt = stages[0].startsAt + 31 days; //10th of February 2018 at 16:00UTC
+        }
+
+        //ICO Stage 1 pre-sale 1
+        stages[1].name = 'ICO Stage 1 pre-sale 1';
+        stages[1].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE1;
+        stages[1].bonus = BONUS_ICO_STAGE1_PRE_SALE1;
+
+        if (isDebug) {
+            stages[1].startsAt = stages[0].endsAt;
+            stages[1].endsAt = stages[1].startsAt + 10 seconds; //+10 seconds
+        } else {
+            stages[1].startsAt = 1518710400; //15th of February 2018 at 16:00UTC
+            stages[1].endsAt = stages[0].startsAt + 28 days; //15th of March 2018 at 16:00UTC
+        }
+
+        //ICO Stage 1 pre-sale 2
+        stages[2].name = 'ICO Stage 1 pre-sale 2';
+        stages[2].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE2;
+        stages[2].bonus = BONUS_ICO_STAGE1_PRE_SALE2;
+
+        stages[2].startsAt = stages[1].startsAt;
+        stages[2].endsAt = stages[1].endsAt;
+
+        //ICO Stage 1 pre-sale 3
+        stages[3].name = 'ICO Stage 1 pre-sale 3';
+        stages[3].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE3;
+        stages[3].bonus = BONUS_ICO_STAGE1_PRE_SALE3;
+
+        stages[3].startsAt = stages[1].startsAt;
+        stages[3].endsAt = stages[1].endsAt;
+
+        //ICO Stage 1 pre-sale 4
+        stages[4].name = 'ICO Stage 1 pre-sale 4';
+        stages[4].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE4;
+        stages[4].bonus = BONUS_ICO_STAGE1_PRE_SALE4;
+
+        stages[4].startsAt = stages[1].startsAt;
+        stages[4].endsAt = stages[1].endsAt;
+
+        //ICO Stage 1 pre-sale 4
+        stages[4].name = 'ICO Stage 1 pre-sale 4';
+        stages[4].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE4;
+        stages[4].bonus = BONUS_ICO_STAGE1_PRE_SALE4;
+
+        stages[4].startsAt = stages[1].startsAt;
+        stages[4].endsAt = stages[1].endsAt;
+    }
 
     function totalSupply()
         public
@@ -164,23 +270,40 @@ contract UnilotToken is ERC20 {
         return allowed[_owner][_spender];
     }
 
+    //Returns bonus for certain level of reference
+    function calculateReferralBonus(uint amount, uint level)
+        public
+        pure
+        returns (uint bonus)
+    {
+        bonus = 0;
+
+        if ( level == 1 ) {
+            bonus = ( ( amount * REFERRAL_BONUS_LEVEL1 ) / 100 );
+        } else if (level == 2) {
+            bonus = ( ( amount * REFERRAL_BONUS_LEVEL2 ) / 100 );
+        } else if (level == 3) {
+            bonus = ( ( amount * REFERRAL_BONUS_LEVEL3 ) / 100 );
+        } else if (level == 4) {
+            bonus = ( ( amount * REFERRAL_BONUS_LEVEL4 ) / 100 );
+        } else if (level == 5) {
+            bonus = ( ( amount * REFERRAL_BONUS_LEVEL5 ) / 100 );
+        }
+    }
+
+    function getInvestorsPool()
+        public
+        view
+        returns (InvestorsPool _investorsPool)
+    {
+        return investorsPool;
+    }
+
     function ()
         public
         payable
-        onlyRegisteredInvestors
+        notAdministrator
     {
-        uint amount = msg.value/getCurrentPrice();
-        uint refund = msg.value - (amount * getCurrentPrice());
 
-        require( amount > 0 );
-        require( ( balances[msg.sender] + amount ) <= personalCap );
-        require( balances[administrator] >= amount );
-
-        balances[administrator] -= amount;
-        balances[msg.sender] += amount;
-
-        if ( refund > 0 ) {
-            msg.sender.transfer(refund);
-        }
     }
 }

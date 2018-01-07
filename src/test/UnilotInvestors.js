@@ -3,7 +3,6 @@ var UnilotInvestors = artifacts.require('UnilotInvestors');
 contract('UnilotInvestors', function(accounts) {
     var EMPTY_ADDRESS = '0x0000000000000000000000000000000000000000';
     var coinbase = web3.eth.coinbase;
-    var accounts = web3.eth.accounts;
     var investorIndex = 0;
     var state = {
         ANONYMOUS: 0,
