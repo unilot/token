@@ -71,12 +71,20 @@ contract UnilotAdvisors is AdvisorsPool {
         shareIsMoreThanZero(_share)
         validAdvisor(_advisor)
     {
-        require( advisors.length == 0 || advisors[advisorsIndex[_advisor]] != _advisor ); //Adviser is new
-        require( totalDistribution + _share <= ( 100 * ( 10**ACCURACY ) ) );
+        uint index = advisorsIndex[_advisor];
 
-        advisors.push(_advisor);
-        shares.push(_share);
-        advisorsIndex[_advisor] = (advisors.length - 1);
+        require( advisors.length == 0 || advisors[index] != _advisor ); //Adviser is new
+        require( ( totalDistribution + _share ) <= ( 100 * ( 10**ACCURACY ) ) );
+
+        if ( advisors.length > 0 && advisors[index] == address(0) ) {
+            advisors[index] = _advisor;
+            shares[index] = _share;
+        } else {
+            advisors.push(_advisor);
+            shares.push(_share);
+            advisorsIndex[_advisor] = (advisors.length - 1);
+        }
+
         totalDistribution += _share;
     }
 
@@ -89,7 +97,7 @@ contract UnilotAdvisors is AdvisorsPool {
     {
         uint index = advisorsIndex[_advisor];
 
-        require( ( totalDistribution - shares[index] ) + _share <= ( 100 * ( 10**ACCURACY ) ) );
+        require( ( totalDistribution - shares[index]  + _share ) <= ( 100 * ( 10**ACCURACY ) ) );
 
         totalDistribution += ( _share - shares[index] );
 
@@ -108,7 +116,6 @@ contract UnilotAdvisors is AdvisorsPool {
 
         delete advisors[index];
         delete shares[index];
-        delete advisorsIndex[_advisor];
     }
 
     function getAdvisers()
