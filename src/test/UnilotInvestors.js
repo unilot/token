@@ -29,7 +29,7 @@ contract('UnilotInvestors', function(accounts) {
         return UnilotInvestors.deployed().then(function(instance){
             return instance.getAdministrator.call()
         }).then(function(administrator) {
-            assert.equal(administrator, coinbase, "That's odd. One who created is not admin?");
+            return assert.equal(administrator, coinbase, "That's odd. One who created is not admin?");
         });
     });
 
@@ -320,9 +320,9 @@ contract('UnilotInvestors', function(accounts) {
                 referrers[0]
             ];
 
-            assert.equal(result.length, knownReferrers.length, 'Referers chain should have 6 referrers.');
+            assert.equal(result.length, 5, 'Referers chain should have 6 referrers.');
 
-            for (var i = 0; i < 6; i++){
+            for (var i = 0; i < result.length; i++){
                 assert.equal(result[i].valueOf(), knownReferrers[i],
                     'Referrer at level ' + (i+1) + ' should be "' + knownReferrers[i] + '"');
             }

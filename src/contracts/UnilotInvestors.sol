@@ -80,7 +80,7 @@ contract UnilotInvestors is InvestorsPool {
     function getReferrersList(address investor, uint max_depth)
         public
         view
-        returns(address[] memory referrers)
+        returns(address[5] memory referrers)
     {
         uint depth = getReferanceLevel(investor);
 
@@ -88,7 +88,10 @@ contract UnilotInvestors is InvestorsPool {
             depth = max_depth;
         }
 
-        referrers = new address[](depth);
+        if ( depth > referrers.length ) {
+            depth = referrers.length;
+        }
+
         address last_referrer = investor;
 
         for (uint i = 0; i < depth; i++) {
