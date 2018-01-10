@@ -19,93 +19,93 @@ contract('UnilotToken', function(accounts) {
         while ((new Date()) - dt <= milliseconds) { /* Do nothing */ }
     }
 
-    // it('Simple buy on stage 1', function () {
-    //     var token;
-    //     var investorsPool;
-    //     var investors = [
-    //         accounts[index++]
-    //     ];
-    //
-    //     return UnilotInvestors.deployed().then(function (instance) {
-    //         investorsPool = instance;
-    //
-    //         return UnilotToken.new(investorsPool.address, true);
-    //     }).then(function (instance) {
-    //         token = instance;
-    //
-    //         return investorsPool.add(investors[0], state.REGISTERED, 0);
-    //     }).then(function () {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(1, 'ether')
-    //         });
-    //     }).then(function(tx) {
-    //         return token.balanceOf.call(investors[0]);
-    //     }).then(function(balance) {
-    //         assert.equal(balance.valueOf(), 17721518987341772400000,
-    //             'Total number of tokens should be 17721.518987341772400000 UNIT');
-    //     });
-    // });
-    //
-    // it('Testing invalid payments', function () {
-    //     var token;
-    //     var investorsPool;
-    //     var investors = [
-    //         accounts[index++],
-    //         accounts[index++]
-    //     ];
-    //
-    //     return UnilotInvestors.deployed().then(function (instance) {
-    //         investorsPool = instance;
-    //
-    //         return UnilotToken.new(investorsPool.address, true);
-    //     }).then(function (instance) {
-    //         token = instance;
-    //
-    //         return token.getAvailableCoinsForCurrentStage.call();
-    //     }).then(function (result) {
-    //         assert.equal(result.valueOf(), 25000000000000000000000000,
-    //             '25 mln tokens should be available for sale.');
-    //     }).then(function () {
-    //         return investorsPool.add(investors[0], state.REGISTERED, 0);
-    //     }).then(function () {
-    //         return token.sendTransaction({
-    //             from: investors[1],
-    //             value: web3.toWei(1, 'ether')
-    //         });
-    //     }).catch(function(error) {
-    //         var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
-    //         assert(reverted, 'Transaction should be reverted. Investor is not registered.');
-    //     }).then(function () {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(78, 'szabo') //Less then one token
-    //         });
-    //     }).catch(function (error) {
-    //         var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
-    //         assert(reverted, 'Transaction should be reverted. Value is too low.');
-    //     }).then(function () {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(30, 'ether')
-    //         });
-    //     }).then(function (tx) {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(1, 'wei')
-    //         });
-    //     }).catch(function (error) {
-    //         var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
-    //         assert(reverted, 'Transaction should be reverted. Total investment is more than 30ETH.');
-    //     }).then(function () {
-    //         return investorsPool.add(investors[1], state.REGISTERED, 0);
-    //     }).then(function (tx) {
-    //         return token.sendTransaction({
-    //             from: investors[1],
-    //             value: web3.toWei(30, 'ether')
-    //         })
-    //     });
-    // });
+    it('Simple buy on stage 1', function () {
+        var token;
+        var investorsPool;
+        var investors = [
+            accounts[index++]
+        ];
+
+        return UnilotInvestors.deployed().then(function (instance) {
+            investorsPool = instance;
+
+            return UnilotToken.new(investorsPool.address, true);
+        }).then(function (instance) {
+            token = instance;
+
+            return investorsPool.add(investors[0], state.REGISTERED, 0);
+        }).then(function () {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(1, 'ether')
+            });
+        }).then(function(tx) {
+            return token.balanceOf.call(investors[0]);
+        }).then(function(balance) {
+            assert.equal(balance.valueOf(), 17721518987341772400000,
+                'Total number of tokens should be 17721.518987341772400000 UNIT');
+        });
+    });
+
+    it('Testing invalid payments', function () {
+        var token;
+        var investorsPool;
+        var investors = [
+            accounts[index++],
+            accounts[index++]
+        ];
+
+        return UnilotInvestors.deployed().then(function (instance) {
+            investorsPool = instance;
+
+            return UnilotToken.new(investorsPool.address, true);
+        }).then(function (instance) {
+            token = instance;
+
+            return token.getAvailableCoinsForCurrentStage.call();
+        }).then(function (result) {
+            assert.equal(result.valueOf(), 25000000000000000000000000,
+                '25 mln tokens should be available for sale.');
+        }).then(function () {
+            return investorsPool.add(investors[0], state.REGISTERED, 0);
+        }).then(function () {
+            return token.sendTransaction({
+                from: investors[1],
+                value: web3.toWei(1, 'ether')
+            });
+        }).catch(function(error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            assert(reverted, 'Transaction should be reverted. Investor is not registered.');
+        }).then(function () {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(78, 'szabo') //Less then one token
+            });
+        }).catch(function (error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            assert(reverted, 'Transaction should be reverted. Value is too low.');
+        }).then(function () {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(30, 'ether')
+            });
+        }).then(function (tx) {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(1, 'wei')
+            });
+        }).catch(function (error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            assert(reverted, 'Transaction should be reverted. Total investment is more than 30ETH.');
+        }).then(function () {
+            return investorsPool.add(investors[1], state.REGISTERED, 0);
+        }).then(function (tx) {
+            return token.sendTransaction({
+                from: investors[1],
+                value: web3.toWei(30, 'ether')
+            })
+        });
+    });
 
 
     it('Testing stages', function() {
