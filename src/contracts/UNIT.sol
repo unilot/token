@@ -58,18 +58,26 @@ contract UnilotToken is ERC20 {
     uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE3 = 5 * (10**6) * accuracy;
     //5 mln tokens
     uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE4 = 5 * (10**6) * accuracy;
+    //122.5 mln tokens
+    uint public constant TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE5 = 1225 * (10**5) * accuracy;
     //265 mln tokens
-    uint public constant TOKEN_AMOUNT_ICO_STAGE2 = 265 * (10**6) * accuracy;
+    uint public constant TOKEN_AMOUNT_ICO_STAGE2 = 1425 * (10**5) * accuracy;
 
     uint public constant BONUS_PRE_ICO = 40; //40%
     uint public constant BONUS_ICO_STAGE1_PRE_SALE1 = 35; //35%
     uint public constant BONUS_ICO_STAGE1_PRE_SALE2 = 30; //30%
     uint public constant BONUS_ICO_STAGE1_PRE_SALE3 = 25; //25%
     uint public constant BONUS_ICO_STAGE1_PRE_SALE4 = 20; //20%
+    uint public constant BONUS_ICO_STAGE1_PRE_SALE5 = 0; //0%
     uint public constant BONUS_ICO_STAGE2 = 0; //No bonus
 
     //Token Price on Coin Offer
     uint256 public constant price = 79 szabo; //0.000079 ETH
+
+    address public constant ADVISORS_WALLET = 0x77660795BD361Cd43c3627eAdad44dDc2026aD17;
+    address public constant RESERVE_WALLET = 0x731B47847352fA2cFf83D5251FD6a5266f90878d;
+    address public constant BOUNTY_WALLET = 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb;
+    address public constant STORAGE_WALLET = 0xE2A8F147fc808738Cab152b01C7245F386fD8d89;
 
     // Owner of this contract
     address public administrator;
@@ -84,7 +92,7 @@ contract UnilotToken is ERC20 {
     uint256 internal totalCoinsAvailable;
 
     //All token stages. Total 6 stages
-    TokenStage[6] stages;
+    TokenStage[7] stages;
 
     //Index of current stage in stage array
     uint currentStage;
@@ -121,12 +129,20 @@ contract UnilotToken is ERC20 {
     modifier meetTheCap() {
         require(msg.value >= price); // At least one token
 
-        require( ( ( ( balanceOf(msg.sender) / accuracy ) * price ) + msg.value ) <= singleInvestorCap);
+        //Approved investor can invest more than 30 ETH
+        //Approved only gived to trusted investors
+        require(investorsPool.isApproved(msg.sender)
+                || ( ( ( ( balanceOf(msg.sender) / accuracy ) * price ) + msg.value ) <= singleInvestorCap ) );
         _;
     }
 
     modifier canInvest() {
         require(investorsPool.isCanInvest(msg.sender));
+        _;
+    }
+
+    modifier isFreezedReserve(address _address) {
+        require( ( _address == RESERVE_WALLET ) && now > (stages[ (stages.length - 1) ].endsAt + 182 days));
         _;
     }
 
@@ -139,8 +155,39 @@ contract UnilotToken is ERC20 {
         investorsPool = _investorsPool;
         isDebug = _isDebug;
 
+        totalCoinsAvailable -= balances[ADVISORS_WALLET] += ( ( _totalSupply * DST_ADVISERS ) / 100 );
+        totalCoinsAvailable -= balances[RESERVE_WALLET] += ( ( _totalSupply * DST_RESERVE ) / 100 );
+
+        address[7] memory teamWallets = getTeamWallets();
+        uint teamSupply = ( ( _totalSupply * DST_TEAM ) / 100 );
+        uint memberAmount = teamSupply / teamWallets.length;
+
+        for(uint i = 0; i < teamWallets.length; i++) {
+            if ( i == ( teamWallets.length - 1 ) ) {
+                memberAmount = teamSupply;
+            }
+
+            balances[teamWallets[i]] += memberAmount;
+            teamSupply -= memberAmount;
+            totalCoinsAvailable -= memberAmount;
+        }
+
         _setupStages();
         _proceedStage();
+    }
+
+    function getTeamWallets()
+        public
+        pure
+        returns (address[7] memory result)
+    {
+        result[0] = 0x77660795BD361Cd43c3627eAdad44dDc2026aD17;
+        result[1] = 0x5E065a80f6635B6a46323e3383057cE6051aAcA0;
+        result[2] = 0x0cF3585FbAB2a1299F8347a9B87CF7B4fcdCE599;
+        result[3] = 0x5fDd3BA5B6Ff349d31eB0a72A953E454C99494aC;
+        result[4] = 0xC9be9818eE1B2cCf2E4f669d24eB0798390Ffb54;
+        result[5] = 0x77660795BD361Cd43c3627eAdad44dDc2026aD17;
+        result[6] = 0xd13289203889bD898d49e31a1500388441C03663;
     }
 
     function _setupStages()
@@ -156,8 +203,8 @@ contract UnilotToken is ERC20 {
             stages[0].startsAt = now;
             stages[0].endsAt = stages[0].startsAt + 30 seconds;
         } else {
-            stages[0].startsAt = 1515600000; //10th of January 2018 at 16:00UTC
-            stages[0].endsAt = stages[0].startsAt + 31 days; //10th of February 2018 at 16:00UTC
+            stages[0].startsAt = 1515610800; //10th of January 2018 at 19:00UTC
+            stages[0].endsAt = 1518894000; //17th of February 2018 at 19:00UTC
         }
 
         //ICO Stage 1 pre-sale 1
@@ -169,8 +216,8 @@ contract UnilotToken is ERC20 {
             stages[1].startsAt = stages[0].endsAt;
             stages[1].endsAt = stages[1].startsAt + 30 seconds;
         } else {
-            stages[1].startsAt = 1518710400; //15th of February 2018 at 16:00UTC
-            stages[1].endsAt = stages[0].startsAt + 28 days; //15th of March 2018 at 16:00UTC
+            stages[1].startsAt = 1519326000; //22th of February 2018 at 19:00UTC
+            stages[1].endsAt = 1521745200; //22th of March 2018 at 19:00UTC
         }
 
         //ICO Stage 1 pre-sale 2
@@ -197,17 +244,25 @@ contract UnilotToken is ERC20 {
         stages[4].startsAt = stages[1].startsAt;
         stages[4].endsAt = stages[1].endsAt;
 
+        //ICO Stage 1 pre-sale 5
+        stages[5].name = 'ICO Stage 1 pre-sale 5';
+        stages[5].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE5;
+        stages[5].bonus = BONUS_ICO_STAGE1_PRE_SALE5;
+
+        stages[5].startsAt = stages[1].startsAt;
+        stages[5].endsAt = stages[1].endsAt;
+
         //ICO Stage 2
-        stages[5].name = 'ICO Stage 2';
-        stages[5].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE2;
-        stages[5].bonus = BONUS_ICO_STAGE2;
+        stages[6].name = 'ICO Stage 2';
+        stages[6].coinsAvailable = TOKEN_AMOUNT_ICO_STAGE2;
+        stages[6].bonus = BONUS_ICO_STAGE2;
 
         if (isDebug) {
-            stages[5].startsAt = stages[4].endsAt;
-            stages[5].endsAt = stages[5].startsAt + 30 seconds;
+            stages[6].startsAt = stages[5].endsAt;
+            stages[6].endsAt = stages[6].startsAt + 30 seconds;
         } else {
-            stages[5].startsAt = 1524240000; //20th of April 2018 at 16:00UTC
-            stages[5].endsAt = stages[5].startsAt + 30 days;
+            stages[6].startsAt = 1524250800; //20th of April 2018 at 19:00UTC
+            stages[6].endsAt = 1526842800; //20th of May 2018 at 19:00UTC
         }
     }
 
@@ -218,18 +273,20 @@ contract UnilotToken is ERC20 {
             if ( currentStage < stages.length
             && (now >= stages[currentStage].endsAt || getAvailableCoinsForCurrentStage() == 0) ) {
                 currentStage++;
-
-                if (currentStage >= stages.length) {
-                    uint totalTokensForSale = TOKEN_AMOUNT_PRE_ICO
+                uint totalTokensForSale = TOKEN_AMOUNT_PRE_ICO
                                     + TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE1
                                     + TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE2
                                     + TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE3
                                     + TOKEN_AMOUNT_ICO_STAGE1_PRE_SALE4
                                     + TOKEN_AMOUNT_ICO_STAGE2;
 
+                if (currentStage >= stages.length) {
                     //Burning all unsold tokens and proportionally other for deligation
-                    _totalSupply = ( ( ( totalTokensForSale - stages[(stages.length - 1)].coinsAvailable )
-                    * 100 ) / DST_ICO );
+                    _totalSupply -= ( ( ( stages[(stages.length - 1)].coinsAvailable * DST_BOUNTY ) / 100 )
+                                    + ( ( stages[(stages.length - 1)].coinsAvailable * DST_R_N_B_PROGRAM ) / 100 ) );
+
+                    balances[BOUNTY_WALLET] = (((totalTokensForSale - stages[(stages.length - 1)].coinsAvailable) * DST_BOUNTY)/100);
+
                     totalCoinsAvailable = 0;
                     break; //ICO ended
                 }
@@ -245,6 +302,14 @@ contract UnilotToken is ERC20 {
                 break;
             }
         }
+    }
+
+    function getTotalCoinsAvailable()
+        public
+        view
+        returns(uint)
+    {
+        return totalCoinsAvailable;
     }
 
     function getAvailableCoinsForCurrentStage()
@@ -281,6 +346,7 @@ contract UnilotToken is ERC20 {
     function transfer(address _to, uint256 _amount)
         public
         onlyAfterICO
+        isFreezedReserve(_to)
         returns (bool success)
     {
         if (balances[msg.sender] >= _amount
@@ -310,6 +376,8 @@ contract UnilotToken is ERC20 {
     )
         public
         onlyAfterICO
+        isFreezedReserve(_from)
+        isFreezedReserve(_to)
         returns (bool success)
     {
         if (balances[_from] >= _amount
@@ -332,6 +400,7 @@ contract UnilotToken is ERC20 {
     function approve(address _spender, uint256 _amount)
         public
         onlyAfterICO
+        isFreezedReserve(_spender)
         returns (bool success)
     {
         allowed[msg.sender][_spender] = _amount;
@@ -343,7 +412,6 @@ contract UnilotToken is ERC20 {
     function allowance(address _owner, address _spender)
         public
         constant
-        onlyAfterICO
         returns (uint256 remaining)
     {
         return allowed[_owner][_spender];
@@ -443,6 +511,8 @@ contract UnilotToken is ERC20 {
 
             balances[ referrers[ i ] ] += calculateReferralBonus( amountToBuy, ( i + 1 ) );
         }
+
+        STORAGE_WALLET.transfer(this.balance);
     }
 
     //It doesn't really close the stage

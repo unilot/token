@@ -69,6 +69,14 @@ contract UnilotInvestors is InvestorsPool {
                 || investorState == InvestorState.APPROVED);
     }
 
+    function isApproved(address investor)
+        public
+        view
+        returns (bool)
+    {
+        return investors[investor].state == InvestorState.APPROVED;
+    }
+
     function getReferrer(address investor)
         public
         view

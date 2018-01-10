@@ -3,6 +3,6 @@ var UnilotToken = artifacts.require("UnilotToken");
 
 module.exports = function (deployer) {
     deployer.deploy(UnilotInvestors).then(function () {
-        return deployer.deploy(UnilotToken, UnilotInvestors.address);
+        return deployer.deploy(UnilotToken, UnilotInvestors.address, false);
     });
 };
