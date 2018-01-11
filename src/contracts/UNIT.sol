@@ -1,7 +1,6 @@
 pragma solidity ^0.4.18;
 
 import "contracts/interfaces/ERC20.sol";
-import "contracts/interfaces/InvestorsPool.sol";
 
 contract UnilotToken is ERC20 {
     struct TokenStage {
@@ -77,6 +76,7 @@ contract UnilotToken is ERC20 {
     address public constant ADVISORS_WALLET = 0x77660795BD361Cd43c3627eAdad44dDc2026aD17;
     address public constant RESERVE_WALLET = 0x731B47847352fA2cFf83D5251FD6a5266f90878d;
     address public constant BOUNTY_WALLET = 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb;
+    address public constant R_N_D_WALLET = 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb;
     address public constant STORAGE_WALLET = 0xE2A8F147fc808738Cab152b01C7245F386fD8d89;
 
     // Owner of this contract
@@ -96,9 +96,6 @@ contract UnilotToken is ERC20 {
 
     //Index of current stage in stage array
     uint currentStage;
-
-    //Contract the implements interface of InvestorsPool
-    InvestorsPool internal investorsPool;
 
     //Enables or disables debug mode. Debug mode is set only in constructor.
     bool isDebug = false;
@@ -128,16 +125,6 @@ contract UnilotToken is ERC20 {
 
     modifier meetTheCap() {
         require(msg.value >= price); // At least one token
-
-        //Approved investor can invest more than 30 ETH
-        //Approved only gived to trusted investors
-        require(investorsPool.isApproved(msg.sender)
-                || ( ( ( ( balanceOf(msg.sender) / accuracy ) * price ) + msg.value ) <= singleInvestorCap ) );
-        _;
-    }
-
-    modifier canInvest() {
-        require(investorsPool.isCanInvest(msg.sender));
         _;
     }
 
@@ -147,14 +134,22 @@ contract UnilotToken is ERC20 {
     }
 
     // Constructor
-    function UnilotToken(InvestorsPool _investorsPool, bool _isDebug)
+    function UnilotToken()
         public
     {
         administrator = msg.sender;
         totalCoinsAvailable = _totalSupply;
-        investorsPool = _investorsPool;
-        isDebug = _isDebug;
+        //Was as fn parameter for debugging
+        isDebug = false;
 
+        _setupStages();
+        _proceedStage();
+    }
+
+    function prealocateCoins()
+        public
+        onlyAdministrator
+    {
         totalCoinsAvailable -= balances[ADVISORS_WALLET] += ( ( _totalSupply * DST_ADVISERS ) / 100 );
         totalCoinsAvailable -= balances[RESERVE_WALLET] += ( ( _totalSupply * DST_RESERVE ) / 100 );
 
@@ -171,9 +166,6 @@ contract UnilotToken is ERC20 {
             teamSupply -= memberAmount;
             totalCoinsAvailable -= memberAmount;
         }
-
-        _setupStages();
-        _proceedStage();
     }
 
     function getTeamWallets()
@@ -181,7 +173,7 @@ contract UnilotToken is ERC20 {
         pure
         returns (address[7] memory result)
     {
-        result[0] = 0x77660795BD361Cd43c3627eAdad44dDc2026aD17;
+        result[0] = 0x40e3D8fFc46d73Ab5DF878C751D813a4cB7B388D;
         result[1] = 0x5E065a80f6635B6a46323e3383057cE6051aAcA0;
         result[2] = 0x0cF3585FbAB2a1299F8347a9B87CF7B4fcdCE599;
         result[3] = 0x5fDd3BA5B6Ff349d31eB0a72A953E454C99494aC;
@@ -286,6 +278,7 @@ contract UnilotToken is ERC20 {
                                     + ( ( stages[(stages.length - 1)].coinsAvailable * DST_R_N_B_PROGRAM ) / 100 ) );
 
                     balances[BOUNTY_WALLET] = (((totalTokensForSale - stages[(stages.length - 1)].coinsAvailable) * DST_BOUNTY)/100);
+                    balances[R_N_D_WALLET] = (((totalTokensForSale - stages[(stages.length - 1)].coinsAvailable) * DST_R_N_B_PROGRAM)/100);
 
                     totalCoinsAvailable = 0;
                     break; //ICO ended
@@ -447,20 +440,6 @@ contract UnilotToken is ERC20 {
         return ( ( stages[currentStage].bonus * amountOfTokens ) / 100 );
     }
 
-    function getInvestorsPool()
-        public
-        view
-        returns (InvestorsPool)
-    {
-        return investorsPool;
-    }
-
-    function setInvestorsPool(InvestorsPool _newPool)
-        public
-    {
-        investorsPool = _newPool;
-    }
-
     event TokenPurchased(string stage, uint valueSubmitted, uint valueRefunded, uint tokensPurchased);
 
     function ()
@@ -469,7 +448,6 @@ contract UnilotToken is ERC20 {
         notAdministrator
         onlyDuringICO
         meetTheCap
-        canInvest
     {
         _proceedStage();
         require(currentStage < stages.length);
@@ -499,17 +477,6 @@ contract UnilotToken is ERC20 {
 
         if ( getAvailableCoinsForCurrentStage() == 0 ) {
             _proceedStage();
-        }
-
-        //Calculate bonuses
-        address[5] memory referrers = investorsPool.getReferrersList(msg.sender, 5);
-
-        for (uint i = 0; i < 5; i++) {
-            if (referrers[i] == address(0) ) {
-                break;
-            }
-
-            balances[ referrers[ i ] ] += calculateReferralBonus( amountToBuy, ( i + 1 ) );
         }
 
         STORAGE_WALLET.transfer(this.balance);

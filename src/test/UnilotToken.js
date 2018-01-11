@@ -31,80 +31,82 @@ contract('UnilotToken', function(accounts) {
         }).then(function (instance) {
             token = instance;
 
+            return token.prealocateCoins();
+        }).then(function (instance) {
             return token.getTotalCoinsAvailable.call();
-         });//.then(function (totalAvailable) {
-    //         return assert.equal(totalAvailable.valueOf(), 375000000000000000000000000,
-    //             'Total available coins should be 375 mln');
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x40e3D8fFc46d73Ab5DF878C751D813a4cB7B388D');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 32142857142857142857142857, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x731B47847352fA2cFf83D5251FD6a5266f90878d');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 50000000000000000000000000, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0xd13289203889bD898d49e31a1500388441C03663');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142858, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x5E065a80f6635B6a46323e3383057cE6051aAcA0');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x0cF3585FbAB2a1299F8347a9B87CF7B4fcdCE599');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x5fDd3BA5B6Ff349d31eB0a72A953E454C99494aC');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0xC9be9818eE1B2cCf2E4f669d24eB0798390Ffb54');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
-    //     }).then(function () {
-    //         return token.balanceOf.call('0x77660795BD361Cd43c3627eAdad44dDc2026aD17');
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
-    //     });
-    // });
-    //
-    // it('Simple buy on stage 1', function () {
-    //     var token;
-    //     var investorsPool;
-    //     var investors = [
-    //         accounts[index++]
-    //     ];
-    //
-    //     return UnilotInvestors.deployed().then(function (instance) {
-    //         investorsPool = instance;
-    //
-    //         return UnilotToken.new(investorsPool.address, true);
-    //     }).then(function (instance) {
-    //         token = instance;
-    //
-    //         return investorsPool.add(investors[0], state.REGISTERED, 0);
-    //     }).then(function () {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(1, 'ether')
-    //         });
-    //     }).then(function(tx) {
-    //         return token.balanceOf.call(investors[0]);
-    //     }).then(function(balance) {
-    //         return assert.equal(balance.valueOf(), 17721518987341772400000,
-    //             'Total number of tokens should be 17721.518987341772400000 UNIT');
-    //     }).then(function() {
-    //         return investorsPool.changeState(investors[0], state.APPROVED);
-    //     }).then(function (tx) {
-    //         return token.sendTransaction({
-    //             from: investors[0],
-    //             value: web3.toWei(30, 'ether')
-    //         });
-    //     });
-    // });
-    //
+        }).then(function (totalAvailable) {
+            return assert.equal(totalAvailable.valueOf(), 375000000000000000000000000,
+                'Total available coins should be 375 mln');
+        }).then(function () {
+            return token.balanceOf.call('0x77660795BD361Cd43c3627eAdad44dDc2026aD17');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 32142857142857142857142857, '')
+        }).then(function () {
+            return token.balanceOf.call('0x731B47847352fA2cFf83D5251FD6a5266f90878d');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 50000000000000000000000000, '')
+        }).then(function () {
+            return token.balanceOf.call('0xd13289203889bD898d49e31a1500388441C03663');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142858, '')
+        }).then(function () {
+            return token.balanceOf.call('0x5E065a80f6635B6a46323e3383057cE6051aAcA0');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
+        }).then(function () {
+            return token.balanceOf.call('0x0cF3585FbAB2a1299F8347a9B87CF7B4fcdCE599');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
+        }).then(function () {
+            return token.balanceOf.call('0x5fDd3BA5B6Ff349d31eB0a72A953E454C99494aC');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
+        }).then(function () {
+            return token.balanceOf.call('0xC9be9818eE1B2cCf2E4f669d24eB0798390Ffb54');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
+        }).then(function () {
+            return token.balanceOf.call('0x40e3D8fFc46d73Ab5DF878C751D813a4cB7B388D');
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 7142857142857142857142857, '')
+        });
+    });
+
+    it('Simple buy on stage 1', function () {
+        var token;
+        var investorsPool;
+        var investors = [
+            accounts[index++]
+        ];
+
+        return UnilotInvestors.deployed().then(function (instance) {
+            investorsPool = instance;
+
+            return UnilotToken.new(investorsPool.address, true);
+        }).then(function (instance) {
+            token = instance;
+
+            return investorsPool.add(investors[0], state.REGISTERED, 0);
+        }).then(function () {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(1, 'ether')
+            });
+        }).then(function(tx) {
+            return token.balanceOf.call(investors[0]);
+        }).then(function(balance) {
+            return assert.equal(balance.valueOf(), 17721518987341772400000,
+                'Total number of tokens should be 17721.518987341772400000 UNIT');
+        }).then(function() {
+            return investorsPool.changeState(investors[0], state.APPROVED);
+        }).then(function (tx) {
+            return token.sendTransaction({
+                from: investors[0],
+                value: web3.toWei(30, 'ether')
+            });
+        });
+    });
+
     // it('Testing invalid payments', function () {
     //     var token;
     //     var investorsPool;
@@ -476,5 +478,5 @@ contract('UnilotToken', function(accounts) {
     //         return assert.equal(balance.valueOf(), 0,
     //             'Referrer of level > 5 should have no bonus');
     //     });
-    });
+    // });
 });
