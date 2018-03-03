@@ -19,20 +19,35 @@ contract UNITv2 is ERC20Contract,Administrated {
     //Total supply 500mln in the start
     uint96 public _totalSupply = uint96(500000000 * (10^18));
 
-    UnilotToken sourceToken;
+    UnilotToken public sourceToken;
 
-    Whitelist transferWhiteList;
+    Whitelist public transferWhiteList;
 
-    PaymentGateway[] paymentGateways;
+    Whitelist public paymentGateways;
 
-    TokenStagesManager
+    TokenStagesManager public stagesManager;
 
-    mapping(address => uint8) paymentGatewaysIndex;
+    bool public unlocked = false;
 
     //tokenImport[tokenHolder][sourceToken] = true/false;
-    mapping ( address => mapping ( address => bool ) ) tokenImport;
+    mapping ( address => mapping ( address => bool ) ) public tokenImport;
 
-    event TokensImported(address tokenHolder, uint96 amount, address source);
+    event TokensImported(address indexed tokenHolder, uint96 amount, address indexed source);
+    event TokensDelegated(address indexed tokenHolder, uint96 amount, address indexed source);
+    event Unlocked();
+
+    modifier isLocked() {
+        require(unlocked == false);
+        _;
+    }
+
+    modifier isTransferAllowed(address _from, address _to) {
+        require(unlocked
+                || ( stagesManager != address(0) && stagesManager.isCanList() )
+                || ( transferWhiteList != address(0) && ( transferWhiteList.isInList(_from) ) )
+        );
+        _;
+    }
 
     function UNITv2(address _sourceToken)
         public
@@ -55,6 +70,14 @@ contract UNITv2 is ERC20Contract,Administrated {
 
         //Tx: 0x28ec6266322ee874a94ac8d819c0d798ffcd986c0296a75e93832ce759b2c2b3
         balances[0x979E0aA08799A3FB61146dCC1d209A36c548052d] += 2800000000000000000000;
+
+        balances[0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb] += (uint8(sourceToken.DST_BOUNTY()) * _totalSupply) / 100;
+
+        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0x91D740D87A8AeED1fc3EA3C346843173c529D63e);
+
+        //Don't import bounty and R&B tokens
+        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb);
+        markAsImported(sourceToken, 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb);
     }
 
     function setTransferWhitelist(address whiteListAddress)
@@ -69,6 +92,20 @@ contract UNITv2 is ERC20Contract,Administrated {
         onlyAdministrator
     {
         transferWhiteList = Whitelist(address(0));
+    }
+
+    function setStatesManager(address stagesManagerContract)
+        public
+        onlyAdministrator
+    {
+        stagesManager = TokenStagesManager(stagesManagerContract);
+    }
+
+    function setPaymentGatewayList(address paymentGatewayListContract)
+        public
+        onlyAdministrator
+    {
+        paymentGateways = Whitelist(paymentGatewayListContract);
     }
 
     //START Import related methods
@@ -87,8 +124,7 @@ contract UNITv2 is ERC20Contract,Administrated {
     }
 
     function importFromSource(ERC20 _sourceToken, address _tokenHolder)
-        public
-        onlyAdministrator
+        internal
     {
         if ( !isImported(_sourceToken, _tokenHolder) ) {
             uint96 oldBalance = uint96(_sourceToken.balanceOf(_tokenHolder));
@@ -104,6 +140,13 @@ contract UNITv2 is ERC20Contract,Administrated {
         internal
     {
         importFromSource(ERC20(sourceToken), _tokenHolder);
+    }
+
+    function importFromExternal(ERC20 _sourceToken, address _tokenHolder)
+        public
+        onlyAdministrator
+    {
+        return importFromSource(_sourceToken, _tokenHolder);
     }
 
     //Imports from provided token
@@ -142,6 +185,7 @@ contract UNITv2 is ERC20Contract,Administrated {
 
     function transfer(address _to, uint _amount)
         public
+        isTransferAllowed(msg.sender, _to)
         returns (bool success)
     {
         if (!isImported(sourceToken, msg.sender)) {
@@ -157,6 +201,7 @@ contract UNITv2 is ERC20Contract,Administrated {
         uint256 _amount
     )
         public
+        isTransferAllowed(_from, _to)
         returns (bool success)
     {
         if (!isImported(sourceToken, msg.sender)) {
@@ -165,11 +210,37 @@ contract UNITv2 is ERC20Contract,Administrated {
 
         return super.transferFrom(_from, _to, _amount);
     }
+
+    function approve(address _spender, uint _amount)
+        public
+        isTransferAllowed(msg.sender, _spender)
+        returns (bool success)
+    {
+        return super.approve(_spender, _amount);
+    }
     //END ERC20
 
     function delegateTokens(address tokenHolder, uint96 amount)
         public
     {
+        require(paymentGateways.isInList(msg.sender));
+        require(stagesManager.isICO());
+        require(stagesManager.getPool() >= amount);
 
+        uint88 bonus = stagesManager.calculateBonus(amount);
+        stagesManager.delegateFromPool(amount);
+
+        balances[tokenHolder] += amount + uint96(bonus);
+
+        TokensDelegated(tokenHolder, amount, msg.sender);
+    }
+
+    function unlock()
+        public
+        isLocked
+        onlyAdministrator
+    {
+        unlocked = true;
+        Unlocked();
     }
 }

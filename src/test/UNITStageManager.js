@@ -1,3 +1,4 @@
+var UNITv2 = artifacts.require('UNITv2');
 var UNITStagesManager = artifacts.require('UNITStagesManager');
 var bigInt = require('big-integer');
 
@@ -20,7 +21,7 @@ contract('UNITStagesManager', function(accounts) {
     it('Check first switchStage method call', function() {
         var stagesManager;
 
-        return UNITStagesManager.new(true).then(function (instance) {
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
             stagesManager = instance;
 
             return stagesManager.switchStage();
@@ -39,7 +40,7 @@ contract('UNITStagesManager', function(accounts) {
     it('Check offer switch', function() {
         var stagesManager;
 
-        return UNITStagesManager.new(true).then(function (instance) {
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
             stagesManager = instance;
 
             return stagesManager.dNextStage(0);
@@ -84,46 +85,59 @@ contract('UNITStagesManager', function(accounts) {
         });
     });
 
-    it ('Check pools migration', function() {
+    it('Check getBonusPool method', function() {
         var stagesManager;
-        var expectedPool = stagesPools[2][0];
 
-        return UNITStagesManager.new(true).then(function (instance) {
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
+            return stagesManager.dStartsNow();
+        }).then(function (value) {
+            return stagesManager.getBonusPool.call()
+        }).then(function (bonusPool) {
+            return assert.equal(bigInt(bonusPool.valueOf()).compare(14322013755263720000000000), 0,
+                'bonusPool should return 14322013755263720000000000');
+        });
+    });
+
+    it('Check delegateFromPool method', function() {
+        var stagesManager;
+
+        var delegateAmount = 1000 * Math.pow(10, 18);
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
             stagesManager = instance;
 
             return stagesManager.dNextStage(0);
-        }).then(function (tx) {
-            return stagesManager.stage.call();
-        }).then(function (currentStage) {
-            var maxIndex = currentStage.valueOf();
-
-            if ( maxIndex >= (stagesPools.length - 1) ) {
-                maxIndex = stagesPools.length - 2;
-            }
-
-            for ( var i = 0; i < maxIndex; i++ ) {
-                for(var j = 0; j < stagesPools[i].length; j++) {
-                    expectedPool = expectedPool.plus(stagesPools[i][j]);
-                }
-            }
-
-            return stagesManager.dGetPool.call(2, 0);
         }).then(function (value) {
-            assert.equal(bigInt(value.valueOf()).compare(expectedPool), 0, 'All pools should migrate to last stage.');
+            return stagesManager.delegateFromPool(delegateAmount)
         }).then(function (tx) {
+            return stagesManager.getBonusPool.call()
+        }).then(function (bonusPool) {
+            return assert.equal(bigInt(bonusPool.valueOf()).compare(14321663755263720000000000), 0,
+                'Bonus shoud decrease on 350');
+        }).then(function () {
+            return stagesManager.getPool.call()
+        }).then(function (pool) {
+            return assert.equal(bigInt(pool.valueOf()).compare(4999000000000000000000000), 0,
+                'Pool should decrease on 1000 and be 4 999 000')
+        });
+    });
+
+    it('Delegation of more than pool has should fail.', function() {
+        var stagesManager;
+
+        var delegateAmount = 5000001 * Math.pow(10, 18);
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
             return stagesManager.dNextStage(0);
-        }).then(function (tx) {
-            return stagesManager.stage.call();
-        }).then(function (currentStage) {
-            var index = currentStage.valueOf() - 1;
-
-            for(var i = 0; i < stagesPools[index].length; i++) {
-                expectedPool = expectedPool.plus(stagesPools[index][i]);
-            }
-
-            return stagesManager.dGetPool.call(2, 0);
         }).then(function (value) {
-            return assert.equal(bigInt(value.valueOf()).compare(expectedPool), 0, 'All pools should migrate to last stage.');
+            return stagesManager.delegateFromPool(delegateAmount)
+        }).catch(function (error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            return assert(reverted, 'Transaction should be reverted. Amount it too high to delegate.');
         });
     });
 });

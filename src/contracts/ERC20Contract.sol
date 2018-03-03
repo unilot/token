@@ -13,7 +13,7 @@ contract ERC20Contract is ERC20 {
     uint8 public constant decimals = 18;
 
     // Balances for each account
-    mapping(address => uint96) balances;
+    mapping(address => uint96) public balances;
 
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping (address => uint96)) allowed;
@@ -30,7 +30,7 @@ contract ERC20Contract is ERC20 {
         constant
         returns (uint balance)
     {
-        return balances[_owner];
+        return uint(balances[_owner]);
     }
 
 

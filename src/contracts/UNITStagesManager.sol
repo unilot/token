@@ -16,6 +16,10 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         StageOffer[5] offers;
     }
 
+    uint88 public bonusPool = 14322013755263720000000000; //
+
+    uint88 public referralPool = 34500000000000000000000000; //34.5mln
+
     Stage[3] public stages;
 
     uint8 public stage;
@@ -26,6 +30,7 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
     bool internal _isDebug;
 
     event StageUpdated(uint8 prevStage, uint8 prefOffer, uint8 newStage, uint8 newOffer);
+    event TokensDelegated(uint96 amount, uint88 bonus);
 
     modifier tokenOrAdmin() {
         require(tx.origin == administrator || (address(token) != address(0) && msg.sender == address(token)));
@@ -265,10 +270,10 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
     function getBonus()
         public
         constant
-        returns (uint96)
+        returns (uint8)
     {
         if (isICO()) {
-            return stages[stage].offers[offer].pool;
+            return stages[stage].offers[offer].bonus;
         } else {
             return 0;
         }
@@ -295,6 +300,50 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         constant
         returns (bool)
     {
-        return isICO();
+        return !isICO();
+    }
+
+    function getBonusPool()
+        public
+        constant
+        returns(uint88)
+    {
+        return bonusPool;
+    }
+
+    function getReferralPool()
+        public
+        constant
+        returns(uint88)
+    {
+        return referralPool;
+    }
+
+    function calculateBonus(uint96 amount)
+        public
+        view
+        returns (uint88 bonus)
+    {
+        bonus = uint88( ( amount * getBonus() ) / 100);
+
+        if (bonus > bonusPool) {
+            bonus = bonusPool;
+        }
+    }
+
+    function delegateFromPool(uint96 amount)
+        public
+    {
+        require(msg.sender == address(token) || (_isDebug && tx.origin == administrator));
+        require(isICO());
+        require(now < stages[stage].endsAt);
+        require(amount <= getPool());
+
+        uint88 bonus = calculateBonus(amount);
+
+        stages[stage].offers[offer].pool -= amount;
+        bonusPool -= bonus;
+
+        TokensDelegated(amount, bonus);
     }
 }
