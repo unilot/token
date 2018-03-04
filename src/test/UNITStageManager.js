@@ -32,8 +32,8 @@ contract('UNITStagesManager', function(accounts) {
             var sEndssAt = stageInfo[1].valueOf();
             var now = (new Date()).getTime()/1000;
 
-            assert((sStartsAt <= now || sStartsAt === 0), 'Stage should actual');
-            assert((sEndssAt > now || sEndssAt === 0), 'Stage should actual');
+            assert( ( sStartsAt <= now ), 'Stage should actual');
+            assert( ( sEndssAt > now ), 'Stage should actual');
         });
     });
 
@@ -135,6 +135,80 @@ contract('UNITStagesManager', function(accounts) {
             return stagesManager.dNextStage(0);
         }).then(function (value) {
             return stagesManager.delegateFromPool(delegateAmount)
+        }).catch(function (error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            return assert(reverted, 'Transaction should be reverted. Amount it too high to delegate.');
+        });
+    });
+
+    it('Check delegateFromBonus method', function() {
+        var stagesManager;
+
+        var delegateAmount = 1000 * Math.pow(10, 18);
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
+            return stagesManager.dNextStage(0);
+        }).then(function (value) {
+            return stagesManager.delegateFromBonus(delegateAmount)
+        }).then(function (tx) {
+            return stagesManager.getBonusPool.call()
+        }).then(function (bonusPool) {
+            return assert.equal(bigInt(bonusPool.valueOf()).compare(14321013755263720000000000), 0,
+                'Bonus shoud decrease on 1000');
+        });
+    });
+
+    it('Delegation of more than bonus pool has, should fail.', function() {
+        var stagesManager;
+
+        var delegateAmount = 14322013755263720000000001;
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
+            return stagesManager.dNextStage(0);
+        }).then(function (value) {
+            return stagesManager.delegateFromBonus(delegateAmount)
+        }).catch(function (error) {
+            var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
+            return assert(reverted, 'Transaction should be reverted. Amount it too high to delegate.');
+        });
+    });
+
+    it('Check delegateFromReferral method', function() {
+        var stagesManager;
+
+        var delegateAmount = 1000 * Math.pow(10, 18);
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
+            return stagesManager.dNextStage(0);
+        }).then(function (value) {
+            return stagesManager.delegateFromReferral(delegateAmount)
+        }).then(function (tx) {
+            return stagesManager.getReferralPool.call()
+        }).then(function (bonusPool) {
+            return assert.equal(bigInt(bonusPool.valueOf()).compare(34499000000000000000000000), 0,
+                'Bonus shoud decrease on 1000');
+        });
+    });
+
+
+
+    it('Delegation of more than referral pool has, should fail.', function() {
+        var stagesManager;
+
+        var delegateAmount = 34500000000000000000000001;
+
+        return UNITStagesManager.new(true, UNITv2.deployed().address).then(function (instance) {
+            stagesManager = instance;
+
+            return stagesManager.dNextStage(0);
+        }).then(function (value) {
+            return stagesManager.delegateFromReferral(delegateAmount)
         }).catch(function (error) {
             var reverted = error.message.search('VM Exception while processing transaction: revert') >= 0;
             return assert(reverted, 'Transaction should be reverted. Amount it too high to delegate.');

@@ -31,6 +31,8 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
 
     event StageUpdated(uint8 prevStage, uint8 prefOffer, uint8 newStage, uint8 newOffer);
     event TokensDelegated(uint96 amount, uint88 bonus);
+    event ReferralTokensDelegated(uint96 amount);
+    event BonusTokensDelegated(uint96 amount);
 
     modifier tokenOrAdmin() {
         require(tx.origin == administrator || (address(token) != address(0) && msg.sender == address(token)));
@@ -39,6 +41,11 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
 
     modifier onlyDebug() {
         require(_isDebug);
+        _;
+    }
+
+    modifier canDelegate() {
+        require(msg.sender == address(token) || (_isDebug && tx.origin == administrator));
         _;
     }
 
@@ -240,12 +247,17 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         view
         returns (uint32 startsAt, uint32 endsAt, uint96 pool, uint8 bonus)
     {
-        if ( stage < stages.length ) {
-            startsAt = stages[stage].startsAt;
-            endsAt = stages[stage].endsAt;
-            pool = stages[stage].offers[offer].pool;
-            bonus = stages[stage].offers[offer].bonus;
+        uint8 _stage = stage;
+        uint8 _offer = offer;
+
+        if ( _stage >= stages.length ) {
+            _stage = uint8(stages.length - 1);
+            _offer = 0;
         }
+            startsAt = stages[_stage].startsAt;
+            endsAt = stages[_stage].endsAt;
+            pool = stages[_stage].offers[_offer].pool;
+            bonus = stages[_stage].offers[_offer].bonus;
     }
 
     function setToken(address tokenAddress)
@@ -260,11 +272,15 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         constant
         returns (uint96)
     {
-        if (isICO()) {
-            return stages[stage].offers[offer].pool;
-        } else {
-            return 0;
+        uint8 _stage = stage;
+        uint8 _offer = offer;
+
+        if ( !isICO() ) {
+            _stage = uint8(stages.length - 1);
+            _offer = 0;
         }
+
+        return stages[_stage].offers[_offer].pool;
     }
 
     function getBonus()
@@ -272,11 +288,15 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         constant
         returns (uint8)
     {
-        if (isICO()) {
-            return stages[stage].offers[offer].bonus;
-        } else {
-            return 0;
+        uint8 _stage = stage;
+        uint8 _offer = offer;
+
+        if ( !isICO() ) {
+            _stage = uint8(stages.length - 1);
+            _offer = 0;
         }
+
+        return stages[_stage].offers[_offer].bonus;
     }
 
     function isTimeout()
@@ -284,7 +304,21 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         constant
         returns (bool)
     {
-        return now < stages[stage].endsAt;
+        uint8 _stage = stage;
+
+        if ( !isICO() ) {
+            _stage = uint8(stages.length - 1);
+        }
+
+        return now >= stages[_stage].endsAt;
+    }
+
+    function isFreezeTimeout()
+        public
+        constant
+        returns (bool)
+    {
+        return now >= (stages[stages.length - 1].endsAt + 180 days);
     }
 
     function isICO()
@@ -333,17 +367,34 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
 
     function delegateFromPool(uint96 amount)
         public
+        canDelegate()
     {
-        require(msg.sender == address(token) || (_isDebug && tx.origin == administrator));
-        require(isICO());
-        require(now < stages[stage].endsAt);
         require(amount <= getPool());
-
         uint88 bonus = calculateBonus(amount);
 
         stages[stage].offers[offer].pool -= amount;
         bonusPool -= bonus;
 
         TokensDelegated(amount, bonus);
+    }
+
+    function delegateFromBonus(uint88 amount)
+        public
+        canDelegate()
+    {
+        require(amount <= getBonusPool());
+
+        bonusPool -= amount;
+        BonusTokensDelegated(amount);
+    }
+
+    function delegateFromReferral(uint88 amount)
+        public
+        canDelegate()
+    {
+        require(amount <= getReferralPool());
+
+        referralPool -= amount;
+        ReferralTokensDelegated(amount);
     }
 }

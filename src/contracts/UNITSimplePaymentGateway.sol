@@ -6,7 +6,7 @@ import './Administrated.sol';
 import './UNITv2.sol';
 
 
-contract UNITSimplePaymentGateway is PaymentGateway, Administrated {
+contract UNITSimplePaymentGateway is Administrated {
     UNITv2 public token;
 
     bool public locked = false;
@@ -23,6 +23,8 @@ contract UNITSimplePaymentGateway is PaymentGateway, Administrated {
         token = UNITv2(_token);
         setAdministrator(tx.origin);
     }
+
+    function set
 
     function ()
         public

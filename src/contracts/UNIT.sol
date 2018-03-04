@@ -140,7 +140,7 @@ contract UnilotToken is ERC20 {
         administrator = msg.sender;
         totalCoinsAvailable = _totalSupply;
         //Was as fn parameter for debugging
-        isDebug = false;
+        isDebug = true;
 
         _setupStages();
         _proceedStage();

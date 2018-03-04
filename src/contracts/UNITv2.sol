@@ -17,7 +17,7 @@ contract UNITv2 is ERC20Contract,Administrated {
     uint8 public constant decimals = 18;
 
     //Total supply 500mln in the start
-    uint96 public _totalSupply = uint96(500000000 * (10^18));
+    uint96 public _totalSupply = uint96(500000000 * (10**18));
 
     UnilotToken public sourceToken;
 
@@ -29,22 +29,33 @@ contract UNITv2 is ERC20Contract,Administrated {
 
     bool public unlocked = false;
 
+    bool public burned = false;
+
     //tokenImport[tokenHolder][sourceToken] = true/false;
     mapping ( address => mapping ( address => bool ) ) public tokenImport;
 
     event TokensImported(address indexed tokenHolder, uint96 amount, address indexed source);
     event TokensDelegated(address indexed tokenHolder, uint96 amount, address indexed source);
     event Unlocked();
+    event Burned(uint96 amount);
 
     modifier isLocked() {
         require(unlocked == false);
         _;
     }
 
+    modifier isNotBurned() {
+        require(burned == false);
+        _;
+    }
+
     modifier isTransferAllowed(address _from, address _to) {
+        if ( sourceToken.RESERVE_WALLET() == _from ) {
+            require( stagesManager.isFreezeTimeout() );
+        }
         require(unlocked
                 || ( stagesManager != address(0) && stagesManager.isCanList() )
-                || ( transferWhiteList != address(0) && ( transferWhiteList.isInList(_from) ) )
+                || ( transferWhiteList != address(0) && ( transferWhiteList.isInList(_from) || transferWhiteList.isInList(_to) ) )
         );
         _;
     }
@@ -61,28 +72,28 @@ contract UNITv2 is ERC20Contract,Administrated {
         0x0340a8a2fb89513c0086a345973470b7bc33424e818ca6a32dcf9ad66bf9d75c
         */
         balances[0xd13289203889bD898d49e31a1500388441C03663] += 1400000000000000000 * 3;
+        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0xd13289203889bD898d49e31a1500388441C03663);
 
         //Tx: 0xec9b7b4c0f1435282e2e98a66efbd7610de7eacce3b2448cd5f503d70a64a895
         balances[0xE33305B2EFbcB302DA513C38671D01646651a868] += 1400000000000000000;
+        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0xE33305B2EFbcB302DA513C38671D01646651a868);
 
-        //Tx: 0x95fd098284132e732cefdbcae7786bf91a341ff82d1b28062fc61ec3c4ebb94e
-        balances[0xf85FF2542dAF28E3fd5387F52aD63462ADAbEA77] += 7886075949367088607594;
-
-        //Tx: 0x28ec6266322ee874a94ac8d819c0d798ffcd986c0296a75e93832ce759b2c2b3
-        balances[0x979E0aA08799A3FB61146dCC1d209A36c548052d] += 2800000000000000000000;
-
-        balances[0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb] += (uint8(sourceToken.DST_BOUNTY()) * _totalSupply) / 100;
-
-        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0x91D740D87A8AeED1fc3EA3C346843173c529D63e);
+        //Assigning bounty
+        balances[0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb] += uint96(
+            ( uint(_totalSupply) * uint8( sourceToken.DST_BOUNTY() ) ) / 100
+        );
 
         //Don't import bounty and R&B tokens
         markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb);
         markAsImported(sourceToken, 0x794EF9c680bDD0bEf48Bef46bA68471e449D67Fb);
+
+        markAsImported(0xdBF98dF5DAd9077f457e1dcf85Aa9420BcA8B761, 0x91D740D87A8AeED1fc3EA3C346843173c529D63e);
     }
 
     function setTransferWhitelist(address whiteListAddress)
         public
         onlyAdministrator
+        isNotBurned
     {
         transferWhiteList = Whitelist(whiteListAddress);
     }
@@ -90,13 +101,15 @@ contract UNITv2 is ERC20Contract,Administrated {
     function disableTransferWhitelist()
         public
         onlyAdministrator
+        isNotBurned
     {
         transferWhiteList = Whitelist(address(0));
     }
 
-    function setStatesManager(address stagesManagerContract)
+    function setStagesManager(address stagesManagerContract)
         public
         onlyAdministrator
+        isNotBurned
     {
         stagesManager = TokenStagesManager(stagesManagerContract);
     }
@@ -104,6 +117,7 @@ contract UNITv2 is ERC20Contract,Administrated {
     function setPaymentGatewayList(address paymentGatewayListContract)
         public
         onlyAdministrator
+        isNotBurned
     {
         paymentGateways = Whitelist(paymentGatewayListContract);
     }
@@ -145,6 +159,7 @@ contract UNITv2 is ERC20Contract,Administrated {
     function importFromExternal(ERC20 _sourceToken, address _tokenHolder)
         public
         onlyAdministrator
+        isNotBurned
     {
         return importFromSource(_sourceToken, _tokenHolder);
     }
@@ -153,6 +168,7 @@ contract UNITv2 is ERC20Contract,Administrated {
     function importTokensSourceBulk(ERC20 _sourceToken, address[] _tokenHolders)
         public
         onlyAdministrator
+        isNotBurned
     {
         require(_tokenHolders.length <= 256);
 
@@ -188,10 +204,6 @@ contract UNITv2 is ERC20Contract,Administrated {
         isTransferAllowed(msg.sender, _to)
         returns (bool success)
     {
-        if (!isImported(sourceToken, msg.sender)) {
-            importTokensFromSourceToken(msg.sender);
-        }
-
         return super.transfer(_to, _amount);
     }
 
@@ -204,10 +216,6 @@ contract UNITv2 is ERC20Contract,Administrated {
         isTransferAllowed(_from, _to)
         returns (bool success)
     {
-        if (!isImported(sourceToken, msg.sender)) {
-            importTokensFromSourceToken(msg.sender);
-        }
-
         return super.transferFrom(_from, _to, _amount);
     }
 
@@ -222,6 +230,7 @@ contract UNITv2 is ERC20Contract,Administrated {
 
     function delegateTokens(address tokenHolder, uint96 amount)
         public
+        isNotBurned
     {
         require(paymentGateways.isInList(msg.sender));
         require(stagesManager.isICO());
@@ -235,6 +244,47 @@ contract UNITv2 is ERC20Contract,Administrated {
         TokensDelegated(tokenHolder, amount, msg.sender);
     }
 
+    function delegateBonusTokens(address tokenHolder, uint88 amount)
+        public
+        isNotBurned
+    {
+        require(paymentGateways.isInList(msg.sender) || tx.origin == administrator);
+        require(stagesManager.getBonusPool() >= amount);
+
+        stagesManager.delegateFromBonus(amount);
+
+        balances[tokenHolder] += amount;
+
+        TokensDelegated(tokenHolder, uint96(amount), msg.sender);
+    }
+
+    function delegateReferalTokens(address tokenHolder, uint88 amount)
+        public
+        isNotBurned
+    {
+        require(paymentGateways.isInList(msg.sender) || tx.origin == administrator);
+        require(stagesManager.getReferralPool() >= amount);
+
+        stagesManager.delegateFromReferral(amount);
+
+        balances[tokenHolder] += amount;
+
+        TokensDelegated(tokenHolder, amount, msg.sender);
+    }
+
+    function delegateReferralTokensBulk(address[] tokenHolders, uint88[] amounts)
+        public
+        isNotBurned
+    {
+        require(paymentGateways.isInList(msg.sender) || tx.origin == administrator);
+        require(tokenHolders.length <= 256);
+        require(tokenHolders.length == amounts.length);
+
+        for ( uint8 i = 0; i < tokenHolders.length; i++ ) {
+            delegateReferalTokens(tokenHolders[i], amounts[i]);
+        }
+    }
+
     function unlock()
         public
         isLocked
@@ -242,5 +292,20 @@ contract UNITv2 is ERC20Contract,Administrated {
     {
         unlocked = true;
         Unlocked();
+    }
+
+    function burn()
+        public
+        onlyAdministrator
+    {
+        require(!stagesManager.isICO());
+
+        uint96 burnAmount = stagesManager.getPool()
+                        + stagesManager.getBonusPool()
+                        + stagesManager.getReferralPool();
+
+        _totalSupply -= burnAmount;
+        burned = true;
+        Burned(burnAmount);
     }
 }
