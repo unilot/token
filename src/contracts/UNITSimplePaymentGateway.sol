@@ -24,7 +24,12 @@ contract UNITSimplePaymentGateway is Administrated {
         setAdministrator(tx.origin);
     }
 
-    function set
+    function setToken(address _token)
+        public
+        onlyAdministrator
+    {
+        token = UNITv2(_token);
+    }
 
     function ()
         public

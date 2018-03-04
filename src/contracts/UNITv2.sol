@@ -4,7 +4,6 @@ import './UNIT.sol';
 import './ERC20Contract.sol';
 import './interfaces/TokenStagesManager.sol';
 import './interfaces/Whitelist.sol';
-import './interfaces/PaymentGateway.sol';
 import './Administrated.sol';
 
 

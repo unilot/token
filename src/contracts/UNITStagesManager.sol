@@ -56,13 +56,13 @@ contract UNITStagesManager is TokenStagesManager, Administrated {
         token = UNITv2(_token);
         _isDebug = isDebug;
 
-        if (!_isDebug) {
-            switchStage();
-        }
-
         buildPreICOStage();
         buildICOStageOne();
         buildICOStageTwo();
+
+        if (!_isDebug) {
+            switchStage();
+        }
     }
 
     function isDebug()
